@@ -296,30 +296,38 @@ class TikTokDownloader:
 
     async def __init_language(self):
         """
-        初始化语言选择
-        
-        提供给首次运行的用户选择默认语言的交互流程。
-        """
-        languages = (
-            (
-                "简体中文",
-                "zh_CN",
-            ),
-            (
-                "English",
-                "en_US",
-            ),
-        )
-        language = choose(
-            "请选择语言(Please Select Language)",
-            [i[0] for i in languages],
-            self.console,
-        )
-        try:
-            language = languages[int(language) - 1][1]
-            await self._update_language(language)
-        except ValueError:
-            await self.__init_language()
+      初始化语言选择
+
+      首次运行默认使用简体中文，无需用户选择
+      """
+        # 默认设置为简体中文，无需用户选择
+        language = "zh_CN"
+        await self._update_language(language)
+        # """
+        # 初始化语言选择
+        #
+        # 提供给首次运行的用户选择默认语言的交互流程。
+        # """
+        # languages = (
+        #     (
+        #         "简体中文",
+        #         "zh_CN",
+        #     ),
+        #     (
+        #         "English",
+        #         "en_US",
+        #     ),
+        # )
+        # language = choose(
+        #     "请选择语言(Please Select Language)",
+        #     [i[0] for i in languages],
+        #     self.console,
+        # )
+        # try:
+        #     language = languages[int(language) - 1][1]
+        #     await self._update_language(language)
+        # except ValueError:
+        #     await self.__init_language()
 
     def project_info(self):
         """
@@ -598,9 +606,9 @@ class TikTokDownloader:
         await self.check_settings(
             False,
         )
-        if await self.disclaimer():
+        # if await self.disclaimer():
             # await self.main_menu(safe_pop(self.run_command))
-            await self.server()
+        await self.server()
 
     def periodic_update_params(self):
         """
