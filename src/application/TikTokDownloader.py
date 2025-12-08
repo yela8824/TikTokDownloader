@@ -1,3 +1,4 @@
+
 from asyncio import CancelledError, run
 from threading import Event, Thread
 from time import sleep
@@ -47,6 +48,12 @@ __all__ = ["TikTokDownloader"]
 
 
 class TikTokDownloader:
+    """
+    抖音/TikTok 下载器主类
+    
+    用于管理整个下载器的功能模块，包括配置加载、用户界面、下载任务调度等。
+    """
+
     VERSION_MAJOR = VERSION_MAJOR
     VERSION_MINOR = VERSION_MINOR
     VERSION_BETA = VERSION_BETA
@@ -55,8 +62,13 @@ class TikTokDownloader:
     LINE = ">" * WIDTH
 
     def __init__(
-        self,
+            self,
     ):
+        """
+        初始化 TikTokDownloader 实例
+        
+        设置兼容性重命名、控制台输出对象、日志记录器、数据库连接、配置参数等核心组件。
+        """
         self.rename_compatible()
         self.console = ColorfulConsole(
             debug=self.VERSION_BETA,
@@ -77,33 +89,82 @@ class TikTokDownloader:
 
     @staticmethod
     def rename_compatible():
+        """
+        执行文件迁移以确保向后兼容性
+        
+        调用 RenameCompatible 类的方法来处理旧版本文件结构的迁移问题。
+        """
         RenameCompatible.migration_file()
 
     async def read_config(self):
+        """
+        异步读取配置数据并格式化
+        
+        从数据库中读取配置和选项数据，并将其转换为字典形式存储在实例变量中。
+        同时根据语言选项设置当前的语言环境。
+        """
         self.config = self.__format_config(await self.database.read_config_data())
         self.option = self.__format_config(await self.database.read_option_data())
         self.set_language(self.option["Language"])
 
     @staticmethod
     def __format_config(config: list) -> dict:
+        """
+        将配置列表格式化为字典
+        
+        参数:
+            config (list): 包含配置项的列表，每个元素是一个包含 'NAME' 和 'VALUE' 键的字典
+            
+        返回:
+            dict: 格式化后的配置字典，键为配置名称，值为对应的配置值
+        """
         return {i["NAME"]: i["VALUE"] for i in config}
 
     @staticmethod
     def set_language(language: str) -> None:
+        """
+        设置程序使用的语言
+        
+        参数:
+            language (str): 目标语言代码（如 'zh_CN', 'en_US'）
+        """
         switch_language(language)
 
     async def __aenter__(self):
+        """
+        异步上下文管理入口方法
+        
+        进入异步上下文时自动打开数据库连接并读取配置信息。
+        
+        返回:
+            TikTokDownloader: 当前实例
+        """
         await self.database.__aenter__()
         await self.read_config()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        异步上下文管理退出方法
+        
+        退出异步上下文时自动关闭数据库连接及相关的客户端资源。
+        
+        参数:
+            exc_type: 异常类型
+            exc_val: 异常值
+            exc_tb: 异常追踪信息
+        """
         await self.database.__aexit__(exc_type, exc_val, exc_tb)
         if self.parameter:
             await self.parameter.close_client()
             self.close()
 
     def __update_menu(self):
+        """
+        更新功能菜单选项
+        
+        构建一个包含所有可用功能及其对应回调函数的元组列表，供主菜单显示使用。
+        """
         options = {
             1: _("禁用"),
             0: _("启用"),
@@ -134,15 +195,25 @@ class TikTokDownloader:
         )
 
     async def disable_function(
-        self,
-        *args,
-        **kwargs,
+            self,
+            *args,
+            **kwargs,
     ):
+        """
+        禁用某个功能的占位符方法
+        
+        当某项功能尚未实现或被临时禁用时调用此方法提示用户。
+        """
         self.console.warning(
             "该功能正在重构，未来开发完成重新开放！",
         )
 
     async def server(self):
+        """
+        启动 Web API 服务
+        
+        创建并启动基于 FastAPI 的 RESTful 接口服务器，提供对外的服务接口。
+        """
         try:
             self.console.print(
                 _(
@@ -161,14 +232,29 @@ class TikTokDownloader:
             self.running = False
 
     async def __modify_record(self):
+        """
+        修改作品下载记录状态
+        
+        切换是否启用作品下载记录功能的状态。
+        """
         await self.change_config("Record")
 
     async def __modify_logging(self):
+        """
+        修改运行日志记录状态
+        
+        切换是否启用运行日志记录功能的状态。
+        """
         await self.change_config("Logger")
 
     async def _switch_language(
-        self,
+            self,
     ):
+        """
+        切换程序语言
+        
+        在简体中文与英文之间进行语言切换。
+        """
         if self.option["Language"] == "zh_CN":
             language = "en_US"
         elif self.option["Language"] == "en_US":
@@ -178,16 +264,30 @@ class TikTokDownloader:
         await self._update_language(language)
 
     async def _update_language(self, language: str) -> None:
+        """
+        更新语言设置
+        
+        参数:
+            language (str): 新的语言代码
+        """
         self.option["Language"] = language
         await self.database.update_option_data("Language", language)
         self.set_language(language)
 
     async def disclaimer(self):
+        """
+        显示免责声明并要求用户确认
+        
+        首次运行时展示免责声明文本，并等待用户的同意确认。
+        
+        返回:
+            bool: 用户是否同意免责声明
+        """
         if not self.config["Disclaimer"]:
             await self.__init_language()
             self.console.print(_(DISCLAIMER_TEXT), style=MASTER)
             if self.console.input(
-                _("是否已仔细阅读上述免责声明(YES/NO): ")
+                    _("是否已仔细阅读上述免责声明(YES/NO): ")
             ).upper() not in ("Y", "YES"):
                 return False
             await self.database.update_config_data("Disclaimer", 1)
@@ -195,6 +295,11 @@ class TikTokDownloader:
         return True
 
     async def __init_language(self):
+        """
+        初始化语言选择
+        
+        提供给首次运行的用户选择默认语言的交互流程。
+        """
         languages = (
             (
                 "简体中文",
@@ -217,6 +322,11 @@ class TikTokDownloader:
             await self.__init_language()
 
     def project_info(self):
+        """
+        显示项目基本信息
+        
+        输出项目的名称、仓库地址、文档链接以及开源许可证等基础信息。
+        """
         self.console.print(
             f"{self.LINE}\n\n\n{self.NAME.center(self.WIDTH)}\n\n\n{self.LINE}\n",
             style=MASTER,
@@ -226,6 +336,11 @@ class TikTokDownloader:
         self.console.print(_("开源许可: {}\n").format(LICENCE), style=MASTER)
 
     def check_config(self):
+        """
+        检查并初始化配置相关组件
+        
+        根据配置决定是否启用下载记录和日志记录功能。
+        """
         self.recorder = DownloadRecorder(
             self.database,
             self.config["Record"],
@@ -234,6 +349,11 @@ class TikTokDownloader:
         self.logger = {1: LoggerManager, 0: BaseLogger}[self.config["Logger"]]
 
     async def check_update(self):
+        """
+        检查是否有新的程序版本发布
+        
+        发起网络请求查询 GitHub 上最新的 Release 版本号并与本地版本比较。
+        """
         try:
             response = get(
                 RELEASES,
@@ -269,9 +389,17 @@ class TikTokDownloader:
             )
 
     async def main_menu(
-        self,
-        mode=None,
+            self,
+            mode=None,
     ):
+        """
+        主菜单循环
+        
+        展示功能菜单并根据用户输入执行相应的功能。
+        
+        参数:
+            mode (str, optional): 默认选中的菜单项编号，默认为 None 表示由用户手动选择
+        """
         """选择功能模式"""
         while self.running:
             self.__update_menu()
@@ -289,6 +417,11 @@ class TikTokDownloader:
             mode = None
 
     async def complete(self):
+        """
+        终端交互模式
+        
+        启动命令行交互式的下载流程。
+        """
         """终端交互模式"""
         example = TikTok(
             self.parameter,
@@ -301,9 +434,19 @@ class TikTokDownloader:
             self.running = False
 
     async def monitor(self):
+        """
+        后台监听模式
+        
+        启动剪贴板监控模式，持续监听剪贴板中的链接变化。
+        """
         await self.monitor_clipboard()
 
     async def monitor_clipboard(self):
+        """
+        剪贴板监控逻辑
+        
+        使用 ClipboardMonitor 类监听剪贴板内容的变化并触发相应动作。
+        """
         example = ClipboardMonitor(
             self.parameter,
             self.database,
@@ -314,9 +457,15 @@ class TikTokDownloader:
             await example.stop_listener()
 
     async def change_config(
-        self,
-        key: str,
+            self,
+            key: str,
     ):
+        """
+        更改配置项状态
+        
+        参数:
+            key (str): 要更改的配置项名称（例如 "Record" 或 "Logger"）
+        """
         self.config[key] = 0 if self.config[key] else 1
         await self.database.update_config_data(key, self.config[key])
         self.console.print(_("修改设置成功！"))
@@ -324,21 +473,37 @@ class TikTokDownloader:
         await self.check_settings()
 
     async def write_cookie(self):
+        """
+        从剪贴板写入抖音 Cookie
+        
+        引导用户将抖音平台的 Cookie 复制到剪贴板后导入系统。
+        """
         await self.__write_cookie(False)
 
     async def write_cookie_tiktok(self):
+        """
+        从剪贴板写入 TikTok Cookie
+        
+        引导用户将 TikTok 平台的 Cookie 复制到剪贴板后导入系统。
+        """
         await self.__write_cookie(True)
 
     async def __write_cookie(self, tiktok: bool):
+        """
+        写入 Cookie 的通用方法
+        
+        参数:
+            tiktok (bool): 是否是 TikTok 平台的 Cookie
+        """
         self.console.print(
             _("Cookie 获取教程：")
             + "https://github.com/JoeanAmier/TikTokDownloader/blob/master/docs/Cookie%E8%8E%B7%E5%8F%96%E6"
-            "%95%99%E7%A8%8B.md"
+              "%95%99%E7%A8%8B.md"
         )
         if self.console.input(
-            _(
-                "复制 Cookie 内容至剪贴板后，按回车键确认继续；若输入任意内容并按回车，则取消操作："
-            )
+                _(
+                    "复制 Cookie 内容至剪贴板后，按回车键确认继续；若输入任意内容并按回车，则取消操作："
+                )
         ):
             return
         if self.cookie.run(tiktok):
@@ -364,6 +529,12 @@ class TikTokDownloader:
     #         )
 
     async def compatible(self, mode: str):
+        """
+        兼容不同输入模式的选择处理
+        
+        参数:
+            mode (str): 用户输入的菜单选项字符串
+        """
         if mode in {"Q", "q", ""}:
             self.running = False
         try:
@@ -374,6 +545,11 @@ class TikTokDownloader:
             await self.__function_menu[n][1]()
 
     async def delete_works_ids(self):
+        """
+        删除指定的作品下载记录
+        
+        允许用户通过输入作品 ID 来清除其下载历史记录。
+        """
         if not self.config["Record"]:
             self.console.warning(
                 _("作品下载记录功能已禁用！"),
@@ -385,6 +561,12 @@ class TikTokDownloader:
         )
 
     async def check_settings(self, restart=True):
+        """
+        检查并应用配置变更
+        
+        参数:
+            restart (bool): 是否重启周期性任务，默认为 True
+        """
         if restart:
             await self.parameter.close_client()
         self.parameter = Parameter(
@@ -406,15 +588,27 @@ class TikTokDownloader:
         self.parameter.CLEANER.set_rule(TEXT_REPLACEMENT, True)
 
     async def run(self):
+        """
+        程序主运行入口
+        
+        完成初始化工作后进入主菜单循环。
+        """
         self.project_info()
         self.check_config()
         await self.check_settings(
             False,
         )
         if await self.disclaimer():
-            await self.main_menu(safe_pop(self.run_command))
+            # await self.main_menu(safe_pop(self.run_command))
+            await self.server()
 
     def periodic_update_params(self):
+        """
+        周期性更新参数的任务
+        
+        在独立线程中定期刷新参数信息。
+        """
+
         async def inner():
             while not self.event_cookie.is_set():
                 await self.parameter.update_params()
@@ -425,9 +619,15 @@ class TikTokDownloader:
         )
 
     def restart_cycle_task(
-        self,
-        restart=True,
+            self,
+            restart=True,
     ):
+        """
+        重启周期性任务
+        
+        参数:
+            restart (bool): 是否先停止当前任务再重启，默认为 True
+        """
         if restart:
             self.event_cookie.set()
             while self.params_task.is_alive():
@@ -438,6 +638,11 @@ class TikTokDownloader:
         self.params_task.start()
 
     def close(self):
+        """
+        关闭程序前清理资源
+        
+        结束所有后台任务并清理空目录。
+        """
         self.event_cookie.set()
         if self.parameter.folder_mode:
             remove_empty_directories(self.parameter.ROOT)
@@ -445,18 +650,28 @@ class TikTokDownloader:
         self.parameter.logger.info(_("正在关闭程序"))
 
     async def browser_cookie(
-        self,
+            self,
     ):
+        """
+        从浏览器读取抖音 Cookie
+        
+        利用浏览器自动化工具提取抖音平台的 Cookie。
+        """
         if Browser(self.parameter, self.cookie).run(
-            select=safe_pop(self.run_command),
+                select=safe_pop(self.run_command),
         ):
             await self.check_settings()
 
     async def browser_cookie_tiktok(
-        self,
+            self,
     ):
+        """
+        从浏览器读取 TikTok Cookie
+        
+        利用浏览器自动化工具提取 TikTok 平台的 Cookie。
+        """
         if Browser(self.parameter, self.cookie).run(
-            True,
-            select=safe_pop(self.run_command),
+                True,
+                select=safe_pop(self.run_command),
         ):
             await self.check_settings()
