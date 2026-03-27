@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DouK-Downloader</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        .sidebar { min-height: 100vh; background: var(--bs-dark-bg-subtle); }
+        .nav-link { color: var(--bs-body-color); }
+        .nav-link.active { background: var(--bs-primary); }
+        .api-card { transition: transform 0.2s; }
+        .api-card:hover { transform: translateY(-2px); }
+        .result-content { max-height: 400px; overflow: auto; }
+        pre { font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse show" id="sidebar">
+                <div class="position-sticky pt-3">
+                    <h4 class="px-3 mb-4"><i class="bi bi-download"></i> DouK-Downloader</h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link active" href="#" data-page="home"><i class="bi bi-house"></i> 首页</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-page="collect"><i class="bi bi-collection"></i> 作品采集</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-page="records"><i class="bi bi-journal-text"></i> 下载记录</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-page="settings"><i class="bi bi-gear"></i> 设置</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4" id="main-content">
+                <div id="page-home">
+                    <h2>欢迎使用 DouK-Downloader</h2>
+                    <p class="text-muted">TikTok/抖音 数据采集工具</p>
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="card api-card">
+                                <div class="card-body">
+                                    <h5><i class="bi bi-collection"></i> 作品采集</h5>
+                                    <p>采集抖音/TikTok 作品数据</p>
+                                    <button class="btn btn-primary" data-page="collect">开始采集</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card api-card">
+                                <div class="card-body">
+                                    <h5><i class="bi bi-journal-text"></i> 下载记录</h5>
+                                    <p>查看已下载的作品记录</p>
+                                    <button class="btn btn-primary" data-page="records">查看记录</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card api-card">
+                                <div class="card-body">
+                                    <h5><i class="bi bi-gear"></i> 系统设置</h5>
+                                    <p>配置程序运行参数</p>
+                                    <button class="btn btn-primary" data-page="settings">前往设置</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h5>快速操作</h5>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary" onclick="getSettings()"><i class="bi bi-arrow-repeat"></i> 刷新状态</button>
+                            <button class="btn btn-outline-secondary" onclick="location.href='/docs'"><i class="bi bi-book"></i> API 文档</button>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="card">
+                            <div class="card-header">系统状态</div>
+                            <div class="card-body" id="system-status">
+                                <div class="spinner-border spinner-border-sm me-2"></div> 加载中...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="page-collect" style="display:none">
+                    <h2><i class="bi bi-collection"></i> 作品采集</h2>
+                    <ul class="nav nav-tabs mb-3">
+                        <li class="nav-item"><button class="nav-link active" data-tab="douyin">抖音</button></li>
+                        <li class="nav-item"><button class="nav-link" data-tab="tiktok">TikTok</button></li>
+                    </ul>
+                    <div id="tab-douyin">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <ul class="nav nav-pills mb-3" id="douyin-type-pills">
+                                    <li class="nav-item"><button class="nav-link active" data-type="detail">单个作品</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="account">账号作品</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="mix">合集作品</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="live">直播数据</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="comment">评论数据</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="search">搜索数据</button></li>
+                                </ul>
+                                <form id="douyin-form">
+                                    <div id="douyin-fields"></div>
+                                    <button type="submit" class="btn btn-primary mt-3">提交请求</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab-tiktok" style="display:none">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <ul class="nav nav-pills mb-3" id="tiktok-type-pills">
+                                    <li class="nav-item"><button class="nav-link active" data-type="detail">单个作品</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="account">账号作品</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="mix">合辑作品</button></li>
+                                    <li class="nav-item"><button class="nav-link" data-type="live">直播数据</button></li>
+                                </ul>
+                                <form id="tiktok-form">
+                                    <div id="tiktok-fields"></div>
+                                    <button type="submit" class="btn btn-primary mt-3">提交请求</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>请求结果</span>
+                            <button class="btn btn-sm btn-secondary" onclick="$('#result-output').empty()">清空</button>
+                        </div>
+                        <div class="card-body result-content">
+                            <pre id="result-output" class="text-info">等待请求...</pre>
+                        </div>
+                    </div>
+                </div>
+                <div id="page-records" style="display:none">
+                    <h2><i class="bi bi-journal-text"></i> 下载记录</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>作品ID</th>
+                                        <th>标题</th>
+                                        <th>类型</th>
+                                        <th>下载时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="records-table">
+                                    <tr><td colspan="4" class="text-center text-muted">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="page-settings" style="display:none">
+                    <h2><i class="bi bi-gear"></i> 系统设置</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <form id="settings-form">
+                                <div id="settings-fields"></div>
+                                <button type="submit" class="btn btn-success mt-3">保存设置</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

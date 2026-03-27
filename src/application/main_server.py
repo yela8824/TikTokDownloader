@@ -1,8 +1,11 @@
+from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from uvicorn import Config, Server
 
 from ..custom import (
@@ -90,6 +93,9 @@ class APIServer(TikTok):
             title="DouK-Downloader",
             version=__VERSION__,
         )
+        static_path = Path(__file__).parent.parent.parent / "static"
+        self.server.mount("/static", StaticFiles(directory=static_path), name="static")
+        self.templates = Jinja2Templates(directory=static_path)
         self.setup_routes()
         config = Config(
             self.server,
@@ -103,32 +109,48 @@ class APIServer(TikTok):
     def setup_routes(self):
         @self.server.get(
             "/",
+            summary=_("DouK-Downloader Web UI"),
+            description=_("Web 图形界面"),
+            tags=[_("项目")],
+        )
+        async def index():
+            return self.templates.TemplateResponse("index.html", {"request": {}})
+
+        @self.server.get(
+            "/docs",
+            summary=_("API 文档"),
+            description=_("OpenAPI 文档"),
+            tags=[_("项目")],
+        )
+        async def docs():
+            from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+            swagger_ui_html = get_swagger_ui_html(
+                openapi_url=self.server.openapi_url,
+                title=self.server.title + " - Swagger UI",
+            )
+            return swagger_ui_html
+
+        @self.server.get(
+            "/redoc",
+            summary=_("ReDoc 文档"),
+            description=_("ReDoc 文档"),
+            tags=[_("项目")],
+        )
+        async def redoc():
+            from fastapi.openapi.docs import get_redoc_html
+            return get_redoc_html(
+                openapi_url=self.server.openapi_url,
+                title=self.server.title + " - ReDoc",
+            )
+
+        @self.server.get(
+            "/github",
             summary=_("访问项目 GitHub 仓库"),
             description=_("重定向至项目 GitHub 仓库主页"),
             tags=[_("项目")],
         )
-        async def index():
+        async def github():
             return RedirectResponse(url=REPOSITORY)
-
-        @self.server.get(
-            "/token",
-            summary=_("测试令牌有效性"),
-            description=_(
-                dedent("""
-                项目默认无需令牌；公开部署时，建议设置令牌以防止恶意请求！
-                
-                令牌设置位置：`src/custom/function.py` - `is_valid_token()`
-                """)
-            ),
-            tags=[_("项目")],
-            response_model=DataResponse,
-        )
-        async def handle_test(token: str = Depends(token_dependency)):
-            return DataResponse(
-                message=_("验证成功！"),
-                data=None,
-                params=None,
-            )
 
         @self.server.post(
             "/settings",
